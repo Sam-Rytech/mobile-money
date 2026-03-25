@@ -6,10 +6,7 @@ import dotenv from "dotenv";
 
 import { transactionRoutes } from "./routes/transactions";
 import { bulkRoutes } from "./routes/bulk";
-import {
-  transactionDisputeRoutes,
-  disputeRoutes,
-} from "./routes/disputes";
+import { transactionDisputeRoutes, disputeRoutes } from "./routes/disputes";
 import { errorHandler } from "./middleware/errorHandler";
 import { connectRedis, redisClient } from "./config/redis";
 import { pool } from "./config/database";
@@ -18,18 +15,17 @@ import {
   haltOnTimedout,
   timeoutErrorHandler,
 } from "./middleware/timeout";
+import { responseTime } from "./middleware/responseTime";
 import {
   createQueueDashboard,
   getQueueHealth,
   pauseQueueEndpoint,
   resumeQueueEndpoint,
 } from "./queue";
+import { startJobs } from "./jobs/scheduler";
 
 import { register } from "./utils/metrics";
 import { metricsMiddleware } from "./middleware/metrics";
-import { responseTime } from "./middleware/responseTime";
-import { startJobs } from "./jobs/scheduler";
-import { startApolloServer } from "./graphql/server";
 
 dotenv.config();
 
@@ -44,13 +40,7 @@ const limiter = rateLimit({
 
 // Middleware
 app.use(metricsMiddleware); // Register metrics middleware early
-app.use(
-  helmet(
-    process.env.NODE_ENV === "production"
-      ? {}
-      : { contentSecurityPolicy: false },
-  ),
-);
+app.use(helmet());
 app.use(cors());
 app.use(express.json());
 app.use(limiter);
@@ -129,34 +119,26 @@ app.get("/health/queue", getQueueHealth);
 app.post("/admin/queues/pause", pauseQueueEndpoint);
 app.post("/admin/queues/resume", resumeQueueEndpoint);
 
-async function startHttp(): Promise<void> {
-  await startApolloServer(app);
+// Timeout error handler (must be before general error handler)
+app.use(timeoutErrorHandler);
+app.use(errorHandler);
 
-  // Timeout error handler (must be before general error handler)
-  app.use(timeoutErrorHandler);
-  app.use(errorHandler);
-
-  // Init Redis
-  connectRedis()
-    .then(() => {
-      console.log("Redis initialized");
-    })
-    .catch((err) => {
-      console.error("Failed to connect to Redis:", err);
-      console.warn("Distributed locks will not be available");
-    });
-
-  // Initialize queue dashboard
-  const queueRouter = createQueueDashboard();
-  app.use("/admin/queues", queueRouter);
-
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    startJobs();
+// Init Redis
+connectRedis()
+  .then(() => {
+    console.log("Redis initialized");
+  })
+  .catch((err) => {
+    console.error("Failed to connect to Redis:", err);
+    console.warn("Distributed locks will not be available");
   });
 }
 
-startHttp().catch((err) => {
-  console.error(err);
-  process.exit(1);
+// Initialize queue dashboard
+const queueRouter = createQueueDashboard();
+app.use("/admin/queues", queueRouter);
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  startJobs();
 });
