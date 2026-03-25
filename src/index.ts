@@ -3,13 +3,19 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
+import session from "express-session";
 
 import { transactionRoutes } from "./routes/transactions";
 import { bulkRoutes } from "./routes/bulk";
 import { transactionDisputeRoutes, disputeRoutes } from "./routes/disputes";
 import { statsRoutes } from "./routes/stats";
 import { errorHandler } from "./middleware/errorHandler";
-import { connectRedis, redisClient } from "./config/redis";
+import {
+  connectRedis,
+  redisClient,
+  createRedisStore,
+  SESSION_TTL_SECONDS,
+} from "./config/redis";
 import { pool } from "./config/database";
 import {
   globalTimeout,
@@ -70,6 +76,25 @@ app.use(
 );
 app.use(limiter);
 app.use(responseTime);
+
+// Session configuration with Redis store
+const sessionSecret =
+  process.env.SESSION_SECRET || "default-secret-change-in-production";
+const redisStore = createRedisStore();
+
+app.use(
+  session({
+    store: redisStore,
+    secret: sessionSecret,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: process.env.NODE_ENV === "production",
+      httpOnly: true,
+      maxAge: SESSION_TTL_SECONDS * 1000,
+    },
+  }),
+);
 
 // Health & readiness
 app.get("/health", (req, res) =>
@@ -163,7 +188,7 @@ app.use(errorHandler);
 connectRedis()
   .then(() => {
     // Only log if not in test mode to keep test output clean
-    if (process.env.NODE_ENV !== 'test') {
+    if (process.env.NODE_ENV !== "test") {
       console.log("Redis initialized");
     }
   })
@@ -178,7 +203,7 @@ app.use("/admin/queues", queueRouter);
 
 // --- START SERVER LOGIC ---
 // We check if we are in a test environment to prevent port collisions
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== "test") {
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
