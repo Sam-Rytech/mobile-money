@@ -10,6 +10,8 @@ import {
 } from "../controllers/transactionController";
 import { validateTransaction } from "../middleware/validateTransaction";
 import { TimeoutPresets, haltOnTimedout } from "../middleware/timeout";
+import { authenticateToken } from "../middleware/auth";
+import { validateTransaction } from "../middleware/validateTransaction";
 
 export const transactionRoutes = Router();
 
@@ -29,6 +31,7 @@ transactionRoutes.get(
 
 transactionRoutes.post(
   "/deposit",
+  authenticateToken,
   TimeoutPresets.long,
   haltOnTimedout,
   validateTransaction,
@@ -37,6 +40,7 @@ transactionRoutes.post(
 
 transactionRoutes.post(
   "/withdraw",
+  authenticateToken,
   TimeoutPresets.long,
   haltOnTimedout,
   validateTransaction,
@@ -45,6 +49,7 @@ transactionRoutes.post(
 
 transactionRoutes.get(
   "/:id",
+  authenticateToken,
   TimeoutPresets.quick,
   haltOnTimedout,
   getTransactionHandler

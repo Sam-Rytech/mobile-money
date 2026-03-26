@@ -225,6 +225,7 @@ export const bulkRoutes = Router();
 
 bulkRoutes.post(
   "/",
+  authenticateToken,
   upload.single("file"),
   async (req: Request, res: Response) => {
     if (!req.file) {
