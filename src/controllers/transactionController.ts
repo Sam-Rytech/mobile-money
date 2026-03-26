@@ -3,6 +3,7 @@ import { z } from "zod";
 import { StellarService } from "../services/stellar/stellarService";
 import { MobileMoneyService } from "../services/mobilemoney/mobileMoneyService";
 import { TransactionModel, TransactionStatus } from "../models/transaction";
+import { pool } from "../config/database";
 import { lockManager, LockKeys } from "../utils/lock";
 import { TransactionLimitService } from "../services/transactionLimit/transactionLimitService";
 import { KYCService } from "../services/kyc/kycService";
@@ -342,11 +343,6 @@ export const getTransactionHandler = async (req: Request, res: Response) => {
 
       if (diffMinutes > timeoutMinutes) {
         await transactionModel.updateStatus(id, TransactionStatus.Failed);
-        console.log("Transaction timed out (on fetch)", {
-          transactionId: id,
-          timeoutMinutes,
-          reason: "Transaction timeout",
-        });
         transaction.status = TransactionStatus.Failed;
         (transaction as { reason?: string }).reason = "Transaction timeout";
       }
@@ -367,13 +363,6 @@ export const cancelTransactionHandler = async (req: Request, res: Response) => {
     const transaction = await transactionModel.findById(id);
     if (!transaction)
       return res.status(404).json({ error: "Transaction not found" });
-
-    if (transaction.status !== TransactionStatus.Pending)
-      return res
-        .status(400)
-        .json({
-          error: `Cannot cancel transaction with status '${transaction.status}'`,
-        });
 
     if (transaction.status !== TransactionStatus.Pending) {
       return res.status(400).json({
@@ -425,5 +414,52 @@ export const searchTransactionsHandler = async (
   req: Request,
   res: Response,
 ) => {
-  res.status(501).json({ error: "Not implemented" });
+  try {
+    const { phoneNumber, page = "1", limit = "50" } = req.query;
+
+    if (!phoneNumber || typeof phoneNumber !== "string") {
+      return res.status(400).json({ error: "phoneNumber query parameter is required" });
+    }
+
+    const sanitized = phoneNumber.trim();
+
+    // Only allow digits with an optional leading +
+    if (!/^\+?\d{1,20}$/.test(sanitized)) {
+      return res
+        .status(400)
+        .json({ error: "Invalid phone number format. Use digits only, optional leading +" });
+    }
+
+    const pageNum = Math.max(1, parseInt(page as string) || 1);
+    const limitNum = Math.max(1, Math.min(100, parseInt(limit as string) || 50));
+    const offset = (pageNum - 1) * limitNum;
+
+    const { transactions, total } = await transactionModel.searchByPhoneNumber(
+      sanitized,
+      limitNum,
+      offset,
+    );
+
+    // Mask phone numbers — only expose last 4 digits for privacy
+    const masked = transactions.map((tx: any) => ({
+      ...tx,
+      phone_number: tx.phone_number
+        ? `****${tx.phone_number.slice(-4)}`
+        : tx.phone_number,
+    }));
+
+    res.json({
+      success: true,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+      },
+      data: masked,
+    });
+  } catch (error) {
+    console.error("Phone number search error:", error);
+    res.status(500).json({ error: "Failed to search transactions" });
+  }
 };
