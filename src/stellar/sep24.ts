@@ -1,8 +1,7 @@
-import { Router, Request, Response, NextFunction } from "express";
+import { Router, Request, Response } from "express"; // Removed NextFunction
 import { v4 as uuidv4 } from "uuid";
-import { Keypair, Asset } from "stellar-sdk";
-import rateLimit from "express-rate-limit"; // Changed from require to import
-import { getStellarServer } from "../config/stellar";
+import { Keypair } from "stellar-sdk"; // Removed Asset and getStellarServer
+import rateLimit from "express-rate-limit";
 
 // ============================================================================
 // Types and Interfaces
@@ -298,14 +297,15 @@ export const processCallback = async (data: CallbackData): Promise<Sep24Transact
 export const calculateFee = async (
   assetCode: string,
   amount: string,
-  _operation: "deposit" | "withdrawal" // Prefixed with _ to satisfy linter
+  _operation: "deposit" | "withdrawal"
 ): Promise<{ fee: string; fee_details?: { fixed: number; percent: number } }> => {
   const config = getSep24Config();
   const asset = config.assets[assetCode];
   if (!asset) throw new Error(`Asset ${assetCode} not supported`);
 
   const amountNum = parseFloat(amount);
-  let fee = (asset.fee_fixed || 0) + (amountNum * ((asset.fee_percent || 0) / 100));
+  // ERROR FIX: Changed 'let' to 'const' as 'fee' is not reassigned
+  const fee = (asset.fee_fixed || 0) + (amountNum * ((asset.fee_percent || 0) / 100));
 
   return {
     fee: fee.toFixed(2),
@@ -330,7 +330,7 @@ const sep24Limiter = rateLimit({
 sep24Router.get("/info", async (_req: Request, res: Response) => {
   try {
     res.json(getSep24Info());
-  } catch (error) {
+  } catch (_error) { // Prefixed with _ to satisfy linter
     res.status(500).json({ error: "Failed to fetch SEP-24 info" });
   }
 });
@@ -395,7 +395,7 @@ sep24Router.post("/callback/:id", async (req: Request, res: Response) => {
     if (["failed", "expired"].includes(transaction.status)) redirectUrl = `${baseUrl}/sep24/failure?id=${req.params.id}`;
 
     res.json({ success: true, transaction, ...(redirectUrl && { redirect: redirectUrl }) });
-  } catch (error) {
+  } catch (_error) { // Prefixed with _ to satisfy linter
     res.status(500).json({ error: "Failed to process callback" });
   }
 });
