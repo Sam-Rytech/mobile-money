@@ -17,7 +17,7 @@
  */
 
 import cors, { type CorsOptions } from "cors";
-import helmet, { type HelmetOptions, type ContentSecurityPolicyOptions } from "helmet";
+import helmet, { type HelmetOptions } from "helmet";
 import type { Application, Request, Response, NextFunction } from "express";
 
 
@@ -143,7 +143,7 @@ export const corsOptions: CorsOptions = {
  * Adjust the `scriptSrc`, `styleSrc`, and `connectSrc` arrays to match your
  * actual asset origins (CDN, analytics, etc.) rather than using wildcards.
  */
-function buildCspDirectives(): ContentSecurityPolicyOptions["directives"] {
+function buildCspDirectives(): Record<string, Iterable<string>>  {
   const reportUri = process.env.CSP_REPORT_URI;
  
   // Origins from the allowlist are safe to include in connect-src so that
