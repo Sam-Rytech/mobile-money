@@ -17,6 +17,7 @@ import {
   statsRoutesV1,
   transactionDisputeRoutesV1,
   transactionRoutesV1,
+  vaultRoutesV1,
 } from "./routes/v1";
 import { transactionRoutes } from "./routes/transactions";
 import { bulkRoutes } from "./routes/bulk";
@@ -24,6 +25,7 @@ import { transactionDisputeRoutes, disputeRoutes } from "./routes/disputes";
 import { statsRoutes } from "./routes/stats";
 import { reportsRoutes } from "./routes/reports";
 import { createKYCRoutes } from "./routes/kycRoutes";
+import { vaultRoutes } from "./routes/vaults";
 import { errorHandler } from "./middleware/errorHandler";
 import {
   connectRedis,
@@ -189,6 +191,7 @@ app.use("/api/v1/transactions", transactionDisputeRoutesV1);
 app.use("/api/v1/transactions/bulk", bulkRoutesV1);
 app.use("/api/v1/disputes", disputeRoutesV1);
 app.use("/api/v1/stats", statsRoutesV1);
+app.use("/api/v1/vaults", vaultRoutesV1);
 
 const deprecatedApiV1Handler: express.RequestHandler = (req, res, next) => {
   const versionedReq = req as VersionedRequest;
