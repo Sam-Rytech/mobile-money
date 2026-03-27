@@ -30,6 +30,7 @@ import { vaultRoutes } from "./routes/vaults";
 import { createPushRouter } from "./routes/push";
 import { adminRoutes } from "./routes/admin";
 import webhookRoutes from "./routes/webhooks";
+import accountingRoutes from "./routes/accounting";
 import { errorHandler } from "./middleware/errorHandler";
 import {
   connectRedis,
@@ -227,6 +228,7 @@ app.use("/api/reports", reportsRoutes);
 app.use("/api/kyc", createKYCRoutes(pool));
 app.use("/api/admin", requireAuth, adminRoutes);
 app.use("/api/webhooks", webhookRoutes);
+app.use("/api/accounting", requireAuth, accountingRoutes);
 app.use("/sep31", sep31Router);
 app.use("/sep24", sep24Router);
 app.use("/sep12", createSep12Router(pool));
@@ -275,15 +277,12 @@ async function initializeRuntime(): Promise<void> {
   const { createQueueDashboard } = await import("./queue/dashboard");
   app.use("/admin/queues", createQueueDashboard());
 
-  // Start the HTTP server
-  const httpServer = app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+  // Start accounting sync jobs
+  const { accountingSyncJob } = await import("./jobs/accountingSyncJob");
+  accountingSyncJob.start();
+  console.log("Accounting sync jobs started");
 
-  // Start Apollo GraphQL server with subscriptions
-  const { startApolloServer } = await import("./graphql/server");
-  await startApolloServer(app, httpServer);
-  console.log("Apollo GraphQL server with subscriptions started");
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
 
 if (process.env.NODE_ENV !== "test") {
