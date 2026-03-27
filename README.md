@@ -14,7 +14,7 @@ A backend service that bridges mobile money providers (MTN, Airtel, Orange) with
 - PostgreSQL database
 - Redis (for queues and locking)
 - Background processing (BullMQ)
-- Email notifications (Nodemailer)
+- Email notifications (SendGrid)
 - Docker support
 - TypeScript
 
@@ -372,6 +372,9 @@ git commit -m "Your message" --no-verify
 ```
 
 ## API Endpoints
+
+## System Architecture
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
 ### Health Checks
 

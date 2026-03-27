@@ -1,25 +1,23 @@
 -- Create roles table
 CREATE TABLE IF NOT EXISTS roles (
-	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	name VARCHAR(50) UNIQUE NOT NULL,
-	description TEXT
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(50) UNIQUE NOT NULL,
+    description TEXT
 );
 
 -- Create permissions table
 CREATE TABLE IF NOT EXISTS permissions (
-	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	name VARCHAR(100) UNIQUE NOT NULL,
-	description TEXT
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT
 );
 
 -- Create role_permissions join table
 CREATE TABLE IF NOT EXISTS role_permissions (
-	role_id UUID REFERENCES roles(id) ON DELETE CASCADE,
-	permission_id UUID REFERENCES permissions(id) ON DELETE CASCADE,
-	PRIMARY KEY (role_id, permission_id)
+    role_id UUID REFERENCES roles(id) ON DELETE CASCADE,
+    permission_id UUID REFERENCES permissions(id) ON DELETE CASCADE,
+    PRIMARY KEY (role_id, permission_id)
 );
-
--- Seed default roles and permissions for RBAC system
 
 -- Insert default roles
 INSERT INTO roles (name, description) VALUES 
@@ -40,7 +38,6 @@ INSERT INTO permissions (name, description) VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- Assign permissions to roles
-
 -- Admin role gets all permissions
 INSERT INTO role_permissions (role_id, permission_id)
 SELECT r.id, p.id
@@ -63,6 +60,3 @@ WHERE r.name = 'viewer' AND p.name = 'read:all'
 ON CONFLICT (role_id, permission_id) DO NOTHING;
 
 -- Set default role for existing users (if they don't have a role)
-UPDATE users 
-SET role_id = (SELECT id FROM roles WHERE name = 'user')
-WHERE role_id IS NULL;

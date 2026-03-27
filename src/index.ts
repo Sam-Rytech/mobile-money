@@ -17,13 +17,17 @@ import {
   statsRoutesV1,
   transactionDisputeRoutesV1,
   transactionRoutesV1,
+  vaultRoutesV1,
 } from "./routes/v1";
 import { transactionRoutes } from "./routes/transactions";
 import { bulkRoutes } from "./routes/bulk";
 import { transactionDisputeRoutes, disputeRoutes } from "./routes/disputes";
 import { statsRoutes } from "./routes/stats";
+import { contactsRoutes } from "./routes/contacts";
 import { reportsRoutes } from "./routes/reports";
 import { createKYCRoutes } from "./routes/kycRoutes";
+import { vaultRoutes } from "./routes/vaults";
+import { adminRoutes } from "./routes/admin";
 import { errorHandler } from "./middleware/errorHandler";
 import {
   connectRedis,
@@ -39,13 +43,16 @@ import {
   haltOnTimedout,
   timeoutErrorHandler,
 } from "./middleware/timeout";
+import { requireAuth } from "./middleware/auth";
 import { responseTime } from "./middleware/responseTime";
 import { requestId } from "./middleware/requestId";
 import { metricsMiddleware } from "./middleware/metrics";
 import { validateStellarNetwork, logStellarNetwork } from "./config/stellar";
-import { sessionAnomalyLogger } from "./services/logger";
+import { criticalErrorNotifier, sessionAnomalyLogger } from "./services/loggers";
 import { HealthCheckResponse, ReadinessCheckResponse } from "./types/api";
 import sep31Router from "./stellar/sep31";
+import sep24Router from "./stellar/sep24";
+import { createSep12Router } from "./stellar/sep12";
 
 dotenv.config();
 
@@ -115,6 +122,7 @@ app.use(
 app.use(limiter);
 app.use(responseTime);
 app.use(requestId);
+app.use(criticalErrorNotifier());
 
 // Session configuration with Redis store
 const sessionSecret =
@@ -189,6 +197,7 @@ app.use("/api/v1/transactions", transactionDisputeRoutesV1);
 app.use("/api/v1/transactions/bulk", bulkRoutesV1);
 app.use("/api/v1/disputes", disputeRoutesV1);
 app.use("/api/v1/stats", statsRoutesV1);
+app.use("/api/v1/vaults", vaultRoutesV1);
 
 const deprecatedApiV1Handler: express.RequestHandler = (req, res, next) => {
   const versionedReq = req as VersionedRequest;
@@ -211,9 +220,13 @@ app.use("/api/transactions", transactionDisputeRoutes);
 app.use("/api/transactions/bulk", bulkRoutes);
 app.use("/api/disputes", disputeRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/contacts", contactsRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/kyc", createKYCRoutes(pool));
+app.use("/api/admin", requireAuth, adminRoutes);
 app.use("/sep31", sep31Router);
+app.use("/sep24", sep24Router);
+app.use("/sep12", createSep12Router(pool));
 
 app.use(
   (
@@ -259,7 +272,15 @@ async function initializeRuntime(): Promise<void> {
   const { createQueueDashboard } = await import("./queue/dashboard");
   app.use("/admin/queues", createQueueDashboard());
 
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  // Start the HTTP server
+  const httpServer = app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+
+  // Start Apollo GraphQL server with subscriptions
+  const { startApolloServer } = await import("./graphql/server");
+  await startApolloServer(app, httpServer);
+  console.log("Apollo GraphQL server with subscriptions started");
 }
 
 if (process.env.NODE_ENV !== "test") {
