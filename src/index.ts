@@ -284,6 +284,10 @@ async function initializeRuntime(): Promise<void> {
     return;
   }
 
+  // Initialize background jobs and monitoring
+  const { startJobs } = await import("./jobs/scheduler");
+  startJobs();
+
   const { getQueueHealth, pauseQueueEndpoint, resumeQueueEndpoint } =
     await import("./queue/health");
 
