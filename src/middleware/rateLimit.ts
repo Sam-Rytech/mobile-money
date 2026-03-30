@@ -82,6 +82,54 @@ const checkRateLimit = (
 };
 
 /**
+ * Middleware: for sep24Routes
+ * Limit: 
+ */
+export const sep24RateLimiter = (req: Request, res: Response, next: NextFunction) => {
+  // TODO: This is a STUB and need implmentation
+  const userId = (req as any).user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+ 
+ 
+
+  next();
+};
+
+/**
+ * Middleware: for sep31RateLimiter
+ * Limit: 
+ */
+export const sep31RateLimiter = (req: Request, res: Response, next: NextFunction) => {
+  // TODO: This is a STUB and need implmentation
+  const userId = (req as any).user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  next();
+};
+
+/**
+ * Middleware: for sep12RateLimiter
+ * Limit: 
+ */
+export const sep12RateLimiter = (req: Request, res: Response, next: NextFunction) => {
+  // TODO: This is a STUB and need implmentation
+  const userId = (req as any).user?.id;
+
+  if (!userId) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  next();
+};
+
+
+/**
  * Middleware: Rate limit for export endpoints
  * Limit: 5 exports per hour per admin
  */
