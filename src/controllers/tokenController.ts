@@ -56,9 +56,13 @@ export const tokenController = {
   // Revoke all active tokens
   revokeAll: async (req: Request, res: Response) => {
     const userId = (req as any).jwtUser.userId;
+    const { family_id } = req.params;
 
     try {
-      const { data } = await refreshTokenFamilyModel.revokeAll(userId);
+      const { data } = await refreshTokenFamilyModel.revokeAll(
+        userId,
+        family_id,
+      );
 
       // Clear all from Redis
       for (const row of data.tokenResult.rows) {
