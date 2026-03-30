@@ -3,6 +3,8 @@ import { generateToken, verifyToken, JWTPayload, generateRefreshToken, verifyRef
 import { createSSORouter } from '../auth/sso';
 import { enforceSSOForEmployees } from '../middleware/ssoEnforcement';
 import { tokenController } from '../controllers/tokenController';
+import { authenticateToken } from '../middleware/auth';
+import { authenticateUser, getUserPermissions } from '../services/userService';
 
 export const authRoutes = Router();
 
