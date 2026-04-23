@@ -23,6 +23,7 @@ const TRANSACTION_SELECT_COLUMNS = `
   amount::text AS amount,
   phone_number AS "phoneNumber",
   provider,
+  provider_reference AS "providerReference",
   stellar_address AS "stellarAddress",
   status,
   COALESCE(tags, '{}') AS tags,
@@ -82,8 +83,13 @@ export interface Transaction {
   convertedAmount?: string;
   phoneNumber: string;
   provider: string;
+providerReference?: string | null;
   stellarAddress: string;
   status: TransactionStatus;
+  // NEW fields
+  assetType: AssetType;
+  assetCode?: string;   // e.g. 'USDC' — only for anchored assets
+  assetIssuer?: string; // issuer address — only for anchored assets
   tags: string[];
   notes?: string;
   adminNotes?: string;
@@ -214,7 +220,7 @@ export class TransactionModel {
            status, tags, notes, user_id, idempotency_key, 
            idempotency_expires_at, metadata, location_metadata
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
         RETURNING *`,
       [
         referenceNumber,
@@ -226,6 +232,7 @@ export class TransactionModel {
         data.convertedAmount ?? null,
         encrypt(data.phoneNumber),
         data.provider,
+        data.providerReference ?? null,
         encrypt(data.stellarAddress),
         data.status,
         tags,
@@ -306,7 +313,7 @@ export class TransactionModel {
     }
     if (filters?.provider) {
       query += " AND provider = $" + p++;
-      params.push(filters.provider);
+      params.push(filters.provider.toLowerCase());
     }
     if (filters?.providerReference) {
       query += " AND provider_reference = $" + p++;
@@ -362,7 +369,7 @@ export class TransactionModel {
     }
     if (filters?.provider) {
       query += " AND provider = $" + p++;
-      params.push(filters.provider);
+      params.push(filters.provider.toLowerCase());
     }
     if (filters?.providerReference) {
       query += " AND provider_reference = $" + p++;
